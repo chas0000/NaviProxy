@@ -132,9 +132,6 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-          build-args: |
-            BINARY_AMD64=naviproxy-binary-amd64
-            BINARY_ARM64=naviproxy-binary-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
           file: ./docker-context/Dockerfile

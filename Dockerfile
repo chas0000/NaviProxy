@@ -1,16 +1,9 @@
 # 构建阶段
 FROM alpine:latest AS builder
 
-# 接收构建参数
-ARG BINARY_AMD64
-ARG BINARY_ARM64
-
-# 显示调试信息
-RUN echo "BINARY_AMD64=${BINARY_AMD64}" && echo "BINARY_ARM64=${BINARY_ARM64}"
-
-# 复制二进制文件到临时位置
-COPY ${BINARY_AMD64} /app/naviproxy-amd64
-COPY ${BINARY_ARM64} /app/naviproxy-arm64
+# 复制两个架构的二进制文件
+COPY naviproxy-binary-amd64 /app/naviproxy-amd64
+COPY naviproxy-binary-arm64 /app/naviproxy-arm64
 
 # 显示复制的文件
 RUN ls -la /app/
