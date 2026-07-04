@@ -119,6 +119,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=naviproxy-{{date '0601021504'}}
+            type=raw,value=latest
 
       - name: Build and push
         uses: docker/build-push-action@v5
