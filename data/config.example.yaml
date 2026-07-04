@@ -1,0 +1,26 @@
+# Proxy服务配置
+server:
+  port: 8094
+  client_max_body_size: 20971520  # 20M in bytes
+  read_timeout: 90
+  write_timeout: 90
+
+# Navidrome服务器配置
+navidrome:
+  url: http://YOUR_NAVIDROME_HOST:PORT
+  music_library_path: /music
+
+# PS2115 数据库配置 (替代Alist)
+ps2115:
+  db_path: /path/to/ps2115/data/ps2115.db
+  redirect_url: http://YOUR_REDIRECT_HOST:PORT/api/strm302/redirect?
+
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 30  # 秒
+
+# 日志配置
+log:
+  level: info  # debug, info, warn, error
+  format: json  # json, text
