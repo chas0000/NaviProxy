@@ -1,33 +1,3 @@
-# 构建阶段
-FROM alpine:latest AS builder
-
-# 复制两个架构的二进制文件
-COPY naviproxy-binary-amd64 /app/naviproxy-amd64
-COPY naviproxy-binary-arm64 /app/naviproxy-arm64
-
-# 显示复制的文件
-RUN ls -la /app/
-
-# 根据目标架构选择对应的二进制文件
-ARG TARGETARCH
-RUN if [ "${TARGETARCH}" = "amd64" ]; then \
-      echo "Selecting AMD64 binary"; \
-      cp /app/naviproxy-amd64 /app/naviproxy; \
-    elif [ "${TARGETARCH}" = "arm64" ]; then \
-      echo "Selecting ARM64 binary"; \
-      cp /app/naviproxy-arm64 /app/naviproxy; \
-    else \
-      echo "Unknown architecture: ${TARGETARCH}"; \
-      ls -la /app/; \
-      exit 1; \
-    fi
-
-# 检查最终二进制文件
-RUN ls -la /app/
-
-# 复制配置示例
-COPY data/config.example.yaml /app/data/config.example.yaml
-
 # 运行阶段
 FROM alpine:latest
 
@@ -40,12 +10,31 @@ ENV TZ=Asia/Shanghai
 # 设置工作目录
 WORKDIR /app
 
-# 复制编译好的二进制文件
-COPY --from=builder /app/naviproxy /app/naviproxy
-COPY --from=builder /app/data/config.example.yaml /app/data/config.example.yaml
+# 根据目标架构选择对应的二进制文件
+ARG TARGETARCH
+RUN echo "Target architecture: ${TARGETARCH}"
 
-# 设置执行权限
-RUN chmod +x /app/naviproxy && ls -la /app/
+# 复制两个架构的二进制文件到临时目录
+COPY naviproxy-binary-amd64 /tmp/naviproxy-amd64
+COPY naviproxy-binary-arm64 /tmp/naviproxy-arm64
+
+# 根据目标架构选择并复制正确的二进制文件
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
+      echo "Selecting AMD64 binary"; \
+      cp /tmp/naviproxy-amd64 /app/naviproxy; \
+    elif [ "${TARGETARCH}" = "arm64" ]; then \
+      echo "Selecting ARM64 binary"; \
+      cp /tmp/naviproxy-arm64 /app/naviproxy; \
+    else \
+      echo "Unknown architecture: ${TARGETARCH}"; \
+      exit 1; \
+    fi && \
+    chmod +x /app/naviproxy && \
+    ls -la /app/naviproxy && \
+    echo "Binary check: $(test -x /app/naviproxy && echo EXECUTABLE || echo NOT_EXECUTABLE)"
+
+# 复制配置示例
+COPY data/config.example.yaml /app/data/config.example.yaml
 
 # 创建数据目录
 RUN mkdir -p /app/data
