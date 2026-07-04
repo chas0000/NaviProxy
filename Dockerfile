@@ -1,30 +1,35 @@
-# 构建阶段 - 选择对应架构的二进制文件
+# 构建阶段
 FROM alpine:latest AS builder
 
 # 接收构建参数
 ARG BINARY_AMD64
 ARG BINARY_ARM64
 
-# 根据目标架构复制对应的二进制文件
-ARG TARGETARCH
-ARG TARGETPLATFORM
-
 # 显示调试信息
-RUN echo "TARGETARCH=${TARGETARCH}" && echo "TARGETPLATFORM=${TARGETPLATFORM}"
+RUN echo "BINARY_AMD64=${BINARY_AMD64}" && echo "BINARY_ARM64=${BINARY_ARM64}"
 
-# 根据架构复制对应的二进制文件
+# 复制二进制文件到临时位置
+COPY ${BINARY_AMD64} /app/naviproxy-amd64
+COPY ${BINARY_ARM64} /app/naviproxy-arm64
+
+# 显示复制的文件
+RUN ls -la /app/ && file /app/naviproxy-amd64 /app/naviproxy-arm64
+
+# 根据目标架构选择对应的二进制文件
+ARG TARGETARCH
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
-      echo "Copying AMD64 binary: ${BINARY_AMD64}"; \
-      cp ${BINARY_AMD64} /app/naviproxy; \
+      echo "Selecting AMD64 binary"; \
+      cp /app/naviproxy-amd64 /app/naviproxy; \
     elif [ "${TARGETARCH}" = "arm64" ]; then \
-      echo "Copying ARM64 binary: ${BINARY_ARM64}"; \
-      cp ${BINARY_ARM64} /app/naviproxy; \
+      echo "Selecting ARM64 binary"; \
+      cp /app/naviproxy-arm64 /app/naviproxy; \
     else \
       echo "Unknown architecture: ${TARGETARCH}"; \
+      ls -la /app/; \
       exit 1; \
     fi
 
-# 检查二进制文件是否存在
+# 检查最终二进制文件
 RUN ls -la /app/ && file /app/naviproxy
 
 # 复制配置示例
