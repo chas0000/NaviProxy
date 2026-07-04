@@ -1,5 +1,5 @@
 services:
-  navidrome-proxy:
+  naviproxy:
     image: ghcr.io/chas0000/naviproxy:latest
     container_name: naviproxy
     restart: unless-stopped
