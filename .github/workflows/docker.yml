@@ -52,8 +52,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
-            type=raw,value=${{ github.ref_name }}
+            type=raw,value=naviproxy-{{date 'YYMMddHHmm'}}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -99,10 +98,8 @@ jobs:
           CGO_ENABLED: ${{ matrix.goarch == 'arm64' && '1' || '1' }}
           CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
-          OUTPUT_NAME="navidrome-proxy-${{ matrix.goos }}-${{ matrix.goarch }}"
-          if [ "${{ matrix.goarch }}" = "amd64" ]; then
-            OUTPUT_NAME="${OUTPUT_NAME}"
-          fi
+          BUILD_DATE=$(date +%y%m%d%H%M)
+          OUTPUT_NAME="naviproxy-${BUILD_DATE}-${{ matrix.goos }}-${{ matrix.goarch }}"
           go build -ldflags="-w -s" -trimpath -o "${OUTPUT_NAME}" main.go
           tar czf "${OUTPUT_NAME}.tar.gz" "${OUTPUT_NAME}"
           echo "BINARY_NAME=${OUTPUT_NAME}.tar.gz" >> $GITHUB_ENV
