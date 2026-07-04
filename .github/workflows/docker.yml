@@ -105,6 +105,13 @@ jobs:
           mv "$BINARY_FILE" naviproxy-binary
           chmod +x naviproxy-binary
 
+      - name: Generate date tag
+        id: date_tag
+        run: |
+          DATE_TAG="naviproxy-$(date +%y%m%d%H%M)"
+          echo "date_tag=${DATE_TAG}" >> $GITHUB_OUTPUT
+          echo "Generated tag: ${DATE_TAG}"
+
       - name: Create multi-platform build context
         run: |
           mkdir -p docker-context
@@ -120,7 +127,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-{{date '0601021504'}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.date_tag.outputs.date_tag }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
