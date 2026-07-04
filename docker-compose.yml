@@ -1,7 +1,7 @@
 services:
   navidrome-proxy:
-    image: ghcr.io/chas0000/navidrome-proxy:latest
-    container_name: navidrome-proxy
+    image: ghcr.io/chas0000/naviproxy:latest
+    container_name: naviproxy
     restart: unless-stopped
     ports:
       - "8094:8094"
