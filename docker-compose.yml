@@ -1,0 +1,22 @@
+services:
+  navidrome-proxy:
+    image: ghcr.io/chas0000/navidrome-proxy:latest
+    container_name: navidrome-proxy
+    restart: unless-stopped
+    ports:
+      - "8094:8094"
+    volumes:
+      # 挂载配置文件
+      - ./data:/app/data
+      # 挂载数据库文件（内部路径需要与config.yaml中的ps2115.db一致;外部路径选择ps2115的数据）
+      - ./path_to_db:/app/ps2115.db:ro
+    environment:
+      # 时区设置
+      - TZ=Asia/Shanghai
+      # 日志级别
+      - LOG_LEVEL=info
+      # 缓存开关
+      - CACHE_ENABLED=true
+    network_mode: bridge
+    ports:
+      - "8094:8094"  
