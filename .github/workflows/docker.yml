@@ -2,16 +2,6 @@ name: Build Docker Image and Binaries
 
 on:
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build type'
-        required: true
-        default: 'docker'
-        type: choice
-        options:
-          - docker
-          - release
-          - both
 
 env:
   REGISTRY: ghcr.io
@@ -65,7 +55,6 @@ jobs:
 
   build-docker:
     needs: build-binaries
-    if: github.event.inputs.build_type == 'docker' || github.event.inputs.build_type == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -161,7 +150,6 @@ jobs:
 
   create-release:
     needs: build-binaries
-    if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: write
