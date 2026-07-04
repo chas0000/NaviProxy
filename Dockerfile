@@ -1,26 +1,19 @@
-# 构建阶段
-FROM golang:1.21-alpine AS builder
+# 构建阶段 - 复制文件
+FROM alpine:latest AS builder
 
-# 安装构建依赖
-RUN apk add --no-cache git gcc musl-dev sqlite-dev
+# 安装运行时依赖（SQLite库）
+RUN apk add --no-cache ca-certificates tzdata sqlite-libs
 
 # 设置工作目录
-WORKDIR /build
+WORKDIR /app
 
-# 复制依赖文件
-COPY go.mod go.sum ./
-RUN go mod download
+# 复制预编译的二进制文件（固定名称）
+COPY naviproxy-binary /app/naviproxy
 
-# 复制源代码
-COPY . .
+# 复制配置示例
+COPY data/config.example.yaml /app/data/config.example.yaml
 
-# 编译二进制文件（使用优化选项减小体积）
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -trimpath \
-    -o navidrome-proxy main.go
-
-# 运行阶段 - 使用最小化的 alpine 镜像
+# 运行阶段
 FROM alpine:latest
 
 # 安装运行时依赖（SQLite库）
@@ -33,10 +26,8 @@ ENV TZ=Asia/Shanghai
 WORKDIR /app
 
 # 复制编译好的二进制文件
-COPY --from=builder /build/navidrome-proxy /app/
-
-# 复制配置示例
-COPY --from=builder /build/data/config.example.yaml /app/data/config.example.yaml
+COPY --from=builder /app/naviproxy /app/naviproxy
+COPY --from=builder /app/data/config.example.yaml /app/data/config.example.yaml
 
 # 创建数据目录
 RUN mkdir -p /app/data
@@ -45,4 +36,4 @@ RUN mkdir -p /app/data
 EXPOSE 8094
 
 # 运行程序
-CMD ["/app/navidrome-proxy"]
+CMD ["/app/naviproxy"]

@@ -22,55 +22,11 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-docker:
-    if: github.event.inputs.build_type == 'docker' || github.event.inputs.build_type == 'both'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=naviproxy-{{date 'YYMMddHHmm'}}
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          file: ./Dockerfile
-
   build-binaries:
-    if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
 
     strategy:
       matrix:
@@ -103,6 +59,7 @@ jobs:
           go build -ldflags="-w -s" -trimpath -o "${OUTPUT_NAME}" main.go
           tar czf "${OUTPUT_NAME}.tar.gz" "${OUTPUT_NAME}"
           echo "BINARY_NAME=${OUTPUT_NAME}.tar.gz" >> $GITHUB_ENV
+          echo "UNCOMPRESSED_NAME=${OUTPUT_NAME}" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -110,9 +67,78 @@ jobs:
           name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ${{ env.BINARY_NAME }}
 
-  create-release:
-    if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'
+  build-docker:
     needs: build-binaries
+    if: github.event.inputs.build_type == 'docker' || github.event.inputs.build_type == 'both'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-linux-${{ matrix.goarch }}
+          path: ./artifacts
+
+      - name: Extract and prepare binary
+        run: |
+          cd ./artifacts
+          tar xzf *.tar.gz
+          # 找到解压后的二进制文件并重命名为固定名称
+          BINARY_FILE=$(find . -maxdepth 1 -type f -executable -name "naviproxy-*")
+          if [ -z "$BINARY_FILE" ]; then
+            echo "Error: Binary file not found"
+            exit 1
+          fi
+          mv "$BINARY_FILE" ../naviproxy-binary
+          chmod +x ../naviproxy-binary
+          ls -la ..
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=naviproxy-{{date 'YYMMddHHmm'}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/${{ matrix.goarch }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          file: ./Dockerfile
+
+  create-release:
+    needs: build-binaries
+    if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: write
