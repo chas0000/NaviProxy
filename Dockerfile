@@ -13,7 +13,7 @@ COPY ${BINARY_AMD64} /app/naviproxy-amd64
 COPY ${BINARY_ARM64} /app/naviproxy-arm64
 
 # 显示复制的文件
-RUN ls -la /app/ && file /app/naviproxy-amd64 /app/naviproxy-arm64
+RUN ls -la /app/
 
 # 根据目标架构选择对应的二进制文件
 ARG TARGETARCH
@@ -30,7 +30,7 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
     fi
 
 # 检查最终二进制文件
-RUN ls -la /app/ && file /app/naviproxy
+RUN ls -la /app/
 
 # 复制配置示例
 COPY data/config.example.yaml /app/data/config.example.yaml
