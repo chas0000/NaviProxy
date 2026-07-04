@@ -1,8 +1,13 @@
-# 构建阶段
+# 构建阶段 - 选择对应架构的二进制文件
 FROM alpine:latest AS builder
 
-# 复制预编译的二进制文件（固定名称）
-COPY naviproxy-binary /app/naviproxy
+# 接收构建参数
+ARG BINARY_AMD64
+ARG BINARY_ARM64
+
+# 根据目标架构复制对应的二进制文件
+ARG TARGETARCH
+COPY naviproxy-binary-${TARGETARCH} /app/naviproxy
 
 # 复制配置示例
 COPY data/config.example.yaml /app/data/config.example.yaml

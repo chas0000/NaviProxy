@@ -60,10 +60,6 @@ jobs:
       contents: read
       packages: write
 
-    strategy:
-      matrix:
-        goarch: [amd64, arm64]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,72 +77,60 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download binary artifacts
+      - name: Download amd64 binary
         uses: actions/download-artifact@v4
         with:
-          name: binary-linux-${{ matrix.goarch }}
-          path: ./artifacts
+          name: binary-linux-amd64
+          path: ./build-context-amd64
 
-      - name: Extract and prepare binary
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-linux-arm64
+          path: ./build-context-arm64
+
+      - name: Extract and prepare binaries
         run: |
-          cd ./artifacts
+          # 处理 amd64
+          cd ./build-context-amd64
           tar xzf *.tar.gz
-          # 找到解压后的二进制文件并重命名为固定名称
           BINARY_FILE=$(find . -maxdepth 1 -type f -executable -name "naviproxy-*")
-          if [ -z "$BINARY_FILE" ]; then
-            echo "Error: Binary file not found"
-            exit 1
-          fi
-          mv "$BINARY_FILE" ../naviproxy-binary
-          chmod +x ../naviproxy-binary
-          ls -la ..
+          mv "$BINARY_FILE" naviproxy-binary
+          chmod +x naviproxy-binary
 
-      - name: Build and push single arch image
-        id: build
+          # 处理 arm64
+          cd ../build-context-arm64
+          tar xzf *.tar.gz
+          BINARY_FILE=$(find . -maxdepth 1 -type f -executable -name "naviproxy-*")
+          mv "$BINARY_FILE" naviproxy-binary
+          chmod +x naviproxy-binary
+
+      - name: Create multi-platform build context
+        run: |
+          mkdir -p docker-context
+          cp Dockerfile docker-context/
+          cp -r data docker-context/
+          cp build-context-amd64/naviproxy-binary docker-context/naviproxy-binary-amd64
+          cp build-context-arm64/naviproxy-binary docker-context/naviproxy-binary-arm64
+
+      - name: Build and push multi-platform images
         uses: docker/build-push-action@v5
         with:
-          context: .
-          platforms: linux/${{ matrix.goarch }}
+          context: ./docker-context
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-${{ matrix.goarch }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-{{date '0601021504'}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-          file: ./Dockerfile
+          build-args: |
+            BINARY_AMD64=naviproxy-binary-amd64
+            BINARY_ARM64=naviproxy-binary-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  create-multiarch-manifest:
-    needs: build-docker
-    if: github.event.inputs.build_type == 'docker' || github.event.inputs.build_type == 'both'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create manifest with date tag
-        run: |
-          DATE_TAG="naviproxy-$(date +%y%m%d%H%M)"
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${DATE_TAG} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${DATE_TAG}
-
-      - name: Create manifest with latest tag
-        run: |
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:naviproxy-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          file: ./docker-context/Dockerfile
 
   create-release:
     needs: build-binaries
