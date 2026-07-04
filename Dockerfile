@@ -1,11 +1,5 @@
-# 构建阶段 - 复制文件
+# 构建阶段
 FROM alpine:latest AS builder
-
-# 安装运行时依赖（SQLite库）
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs
-
-# 设置工作目录
-WORKDIR /app
 
 # 复制预编译的二进制文件（固定名称）
 COPY naviproxy-binary /app/naviproxy
