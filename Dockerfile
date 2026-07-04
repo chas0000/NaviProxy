@@ -1,8 +1,12 @@
 # 运行阶段
-FROM alpine:latest
+FROM debian:stable-slim
 
-# 安装运行时依赖（SQLite库）
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs
+# 安装运行时依赖（SQLite库和CA证书）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # 设置时区
 ENV TZ=Asia/Shanghai
